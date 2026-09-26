@@ -55,8 +55,8 @@ form{background:var(--surface);border:1px solid var(--rule);border-radius:10px;p
 label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 input{font:500 16px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:9px 10px;width:100%;min-width:0}
 input:focus-visible,button:focus-visible{outline:2px solid var(--court);outline-offset:2px}
-.light-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.light-toggle input{position:absolute;opacity:0;pointer-events:none}
+.light-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative}
+.light-toggle input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;padding:0;left:0;top:0}
 .light-toggle label{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:10px;text-align:center;cursor:pointer;background:var(--bg);font-weight:500}
 .light-toggle input:checked + label{border-color:var(--court);background:var(--court);color:var(--line);font-weight:600}
 .light-toggle input#lit-on:checked + label{background:var(--lamp);border-color:var(--lamp);color:#1d1400}
