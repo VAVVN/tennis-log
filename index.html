@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sổ Giờ Sân Tennis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --court:#1E4F7A; --court-deep:#163C5E; --line:#FFFFFF;
+  --ball:#C9D82B; --lamp:#E8A317;
+  --bg:#EEF2F5; --surface:#FFFFFF; --ink:#16222E; --muted:#5B6B7A; --rule:#D4DDE5;
+  --danger:#B3261E;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --court:#2A6397; --court-deep:#1B3F61; --line:#F2F5F8;
+    --bg:#0F161D; --surface:#17212B; --ink:#E6ECF1; --muted:#93A3B2; --rule:#2A3947;
+    --danger:#F2867D;
+  }
+}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:0 40px}
+
+.board{background:var(--court);color:var(--line);margin-inline:-16px;padding:20px 16px 18px;position:relative;overflow:hidden}
+.board::before{content:"";position:absolute;inset:10px 16px;border:2px solid rgba(255,255,255,.35);border-radius:2px;pointer-events:none}
+.board::after{content:"";position:absolute;left:50%;top:10px;bottom:10px;border-left:2px solid rgba(255,255,255,.35);pointer-events:none}
+.board-inner{position:relative;z-index:1;display:grid;gap:10px;padding-inline:10px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.date{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.05;text-wrap:balance}
+.score{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.score div{background:var(--court-deep);padding:8px 12px;border-radius:4px}
+.score b{display:block;font-family:var(--display);font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
+.score span{font-size:12px;opacity:.85}
+.score .lit b{color:var(--lamp)}
+
+.tabs{display:flex;gap:4px;margin:16px 0;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:4px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);font:600 14px var(--body);padding:9px;border-radius:6px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--court);color:var(--line)}
+
+h2{font-family:var(--display);font-size:22px;font-weight:700;margin:22px 0 10px;letter-spacing:.02em}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.banner{background:var(--surface);border:1px dashed var(--danger);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);margin-top:14px}
+
+form{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:14px;display:grid;gap:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+input{font:500 16px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:9px 10px;width:100%;min-width:0}
+input:focus-visible,button:focus-visible{outline:2px solid var(--court);outline-offset:2px}
+.light-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.light-toggle input{position:absolute;opacity:0;pointer-events:none}
+.light-toggle label{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:10px;text-align:center;cursor:pointer;background:var(--bg);font-weight:500}
+.light-toggle input:checked + label{border-color:var(--court);background:var(--court);color:var(--line);font-weight:600}
+.light-toggle input#lit-on:checked + label{background:var(--lamp);border-color:var(--lamp);color:#1d1400}
+.light-toggle input:focus-visible + label{outline:2px solid var(--court);outline-offset:2px}
+.primary{border:0;background:var(--ball);color:#1b2200;font:700 16px var(--body);padding:12px;border-radius:8px;cursor:pointer}
+.primary:disabled,.ghost:disabled{opacity:.5;cursor:not-allowed}
+.msg{font-size:13px;min-height:1.2em;margin:0}
+.msg.err{color:var(--danger)}
+
+ul.list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
+ul.list li{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:11px 12px;border-top:1px solid var(--rule)}
+ul.list li:first-child{border-top:0}
+ul.list li.empty{display:block;color:var(--muted);font-size:14px;padding:16px 12px}
+.time{font-variant-numeric:tabular-nums;font-weight:600}
+.who{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.right{display:flex;gap:8px;align-items:center}
+.chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.chip.lit{background:var(--lamp);border-color:var(--lamp);color:#1d1400}
+.hrs{font-variant-numeric:tabular-nums;font-weight:600;min-width:3.2em;text-align:right}
+.del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px;font-family:var(--body)}
+.del:hover,.del.armed{color:var(--danger)}
+.del.armed{font-size:13px;font-weight:600}
+
+.monthbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.monthbar button{border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:6px;padding:6px 14px;cursor:pointer;font:600 18px var(--body)}
+.monthbar strong{font-family:var(--display);font-size:24px}
+.tbl{background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:10px 12px;text-align:right;border-top:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{border-top:0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+tfoot td{font-weight:700;font-size:16px}
+.days td{font-size:14px}
+.rates{display:grid;gap:10px}
+.ghost{border:1px solid var(--rule);background:var(--bg);color:var(--ink);font:600 14px var(--body);padding:10px;border-radius:8px;cursor:pointer}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="board">
+    <div class="board-inner">
+      <div class="eyebrow">Hôm nay</div>
+      <div class="date" id="todayLabel">—</div>
+      <div class="score">
+        <div><b id="dayHrs">0,0</b><span>giờ không đèn</span></div>
+        <div class="lit"><b id="litHrs">0,0</b><span>giờ có đèn</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-today" aria-selected="true">Hôm nay</button>
+    <button role="tab" id="tab-month" aria-selected="false">Tổng tháng</button>
+  </div>
+
+  <section id="view-today">
+    <form id="logForm" novalidate>
+      <div class="row">
+        <label for="player">Người chơi
+          <input id="player" autocomplete="off" placeholder="Tên của bạn" maxlength="40">
+        </label>
+        <label for="date">Ngày
+          <input id="date" type="date">
+        </label>
+      </div>
+      <div class="row">
+        <label for="start">Bắt đầu<input id="start" type="time" step="300"></label>
+        <label for="end">Kết thúc<input id="end" type="time" step="300"></label>
+      </div>
+      <div class="light-toggle" role="radiogroup" aria-label="Đèn">
+        <input type="radio" name="lights" id="lit-off" value="off" checked><label for="lit-off">Không đèn</label>
+        <input type="radio" name="lights" id="lit-on" value="on"><label for="lit-on">Có đèn</label>
+      </div>
+      <button class="primary" id="submitBtn" type="submit">Ghi giờ</button>
+      <p class="msg" id="formMsg" aria-live="polite"></p>
+    </form>
+
+    <h2>Các ca hôm nay</h2>
+    <ul class="list" id="todayList"><li class="empty">Đang tải…</li></ul>
+    <p class="note">Nếu một ca có cả phần không đèn và có đèn, ghi thành hai dòng.</p>
+  </section>
+
+  <section id="view-month" hidden>
+    <div class="monthbar">
+      <button id="prevM" aria-label="Tháng trước">‹</button>
+      <strong id="monthLabel">—</strong>
+      <button id="nextM" aria-label="Tháng sau">›</button>
+    </div>
+
+    <h2>Tiền sân</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Loại</th><th>Giờ</th><th>Giá/giờ</th><th>Thành tiền</th></tr></thead>
+        <tbody>
+          <tr><td>Không đèn</td><td id="mDayH">0</td><td id="mDayR">0</td><td id="mDayT">0</td></tr>
+          <tr><td>Có đèn</td><td id="mLitH">0</td><td id="mLitR">0</td><td id="mLitT">0</td></tr>
+        </tbody>
+        <tfoot><tr><td>Tổng</td><td id="mAllH">0</td><td></td><td id="mAllT">0</td></tr></tfoot>
+      </table>
+    </div>
+
+    <h2>Theo ngày</h2>
+    <div class="tbl">
+      <table class="days">
+        <thead><tr><th>Ngày</th><th>Không đèn</th><th>Có đèn</th></tr></thead>
+        <tbody id="dayRows"></tbody>
+      </table>
+    </div>
+
+    <h2>Giá sân</h2>
+    <form class="rates" id="rateForm" novalidate>
+      <div class="row">
+        <label for="rateDay">Không đèn (đ/giờ)<input id="rateDay" type="number" min="0" step="1000" inputmode="numeric"></label>
+        <label for="rateLit">Có đèn (đ/giờ)<input id="rateLit" type="number" min="0" step="1000" inputmode="numeric"></label>
+      </div>
+      <button class="ghost" type="submit" id="rateBtn">Lưu giá</button>
+      <p class="msg" id="rateMsg" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <p class="banner" id="setupBanner" hidden>Chưa kết nối cơ sở dữ liệu. Điền SUPABASE_URL và SUPABASE_ANON_KEY trong file index.html (xem README).</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* ====== CẤU HÌNH — dán từ Supabase: Project Settings → API ====== */
+const SUPABASE_URL      = "https://kcqtdrtkzdguccmfnald.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjcXRkcnRremRndWNjbWZuYWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzQ2MDgsImV4cCI6MjEwNTY1MDYwOH0.D97ksFBQs0dTZHzi37VzARE6sZyeyXhB0jzWJ3ey_oM";
+/* ================================================================ */
+
+(function(){
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,"0");
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const DOW = ["Chủ nhật","Thứ hai","Thứ ba","Thứ tư","Thứ năm","Thứ sáu","Thứ bảy"];
+  const vnd = n => Math.round(n).toLocaleString("vi-VN") + " đ";
+  const hrs = n => (Math.round(n*100)/100).toLocaleString("vi-VN",{minimumFractionDigits:1,maximumFractionDigits:2});
+  const toMin = t => { const [h,m]=t.split(":").map(Number); return h*60+m; };
+  const dur = s => Math.max(0,(toMin(s.end)-toMin(s.start))/60);
+  const monthRange = ym => { const [y,m]=ym.split("-").map(Number); const n=new Date(y,m,1);
+    return [`${ym}-01`, `${n.getFullYear()}-${pad(n.getMonth()+1)}-01`]; };
+
+  let today = ymd(new Date());
+  let viewMonth = today.slice(0,7);
+  let todaySessions = [], monthSessions = [], rates = {day:0, lit:0};
+
+  function setHeader(){
+    const t = new Date();
+    $("todayLabel").textContent = `${DOW[t.getDay()]}, ${t.getDate()}/${t.getMonth()+1}/${t.getFullYear()}`;
+  }
+  setHeader();
+  $("date").value = today;
+  try { const n = localStorage.getItem("tennis-player"); if(n) $("player").value = n; } catch(e){}
+
+  // Tabs
+  function showTab(which){
+    const isToday = which==="today";
+    $("tab-today").setAttribute("aria-selected", isToday);
+    $("tab-month").setAttribute("aria-selected", !isToday);
+    $("view-today").hidden = !isToday;
+    $("view-month").hidden = isToday;
+  }
+  $("tab-today").onclick = () => showTab("today");
+  $("tab-month").onclick = () => showTab("month");
+
+  // Supabase
+  const configured = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-");
+  if(!configured || !window.supabase){ $("setupBanner").hidden=false; $("todayList").innerHTML='<li class="empty">Chưa kết nối.</li>'; renderMonth(); return; }
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const fromRow = r => ({ id:r.id, player:r.player, date:r.date, start:r.start_time.slice(0,5), end:r.end_time.slice(0,5), lights:r.lights });
+
+  async function loadToday(){
+    const { data, error } = await sb.from("tennis_sessions").select("*").eq("date", today).order("start_time");
+    if(error){ showListError(); return; }
+    todaySessions = data.map(fromRow); renderToday();
+  }
+  async function loadMonth(){
+    const [from,to] = monthRange(viewMonth);
+    const { data, error } = await sb.from("tennis_sessions").select("*").gte("date",from).lt("date",to).limit(2000);
+    if(error) return;
+    monthSessions = data.map(fromRow); renderMonth();
+  }
+  async function loadRates(){
+    const { data, error } = await sb.from("tennis_settings").select("day_rate,lit_rate").eq("id",1).maybeSingle();
+    if(error || !data) return;
+    rates = { day:data.day_rate, lit:data.lit_rate };
+    if(document.activeElement!==$("rateDay")) $("rateDay").value = rates.day;
+    if(document.activeElement!==$("rateLit")) $("rateLit").value = rates.lit;
+    renderMonth();
+  }
+  const reloadAll = () => Promise.all([loadToday(), loadMonth()]);
+
+  // Rendering
+  function showListError(){ $("todayList").innerHTML='<li class="empty">Không tải được dữ liệu. Kiểm tra mạng rồi tải lại trang.</li>'; }
+
+  function renderToday(){
+    let d=0,l=0; todaySessions.forEach(s=>{ s.lights? l+=dur(s) : d+=dur(s); });
+    $("dayHrs").textContent = hrs(d); $("litHrs").textContent = hrs(l);
+    const ul = $("todayList"); ul.textContent = "";
+    if(!todaySessions.length){ const li=document.createElement("li"); li.className="empty";
+      li.textContent="Chưa có ca nào hôm nay. Ghi ca đầu tiên ở trên."; ul.appendChild(li); return; }
+    todaySessions.forEach(s=>{
+      const li=document.createElement("li");
+      const tm=document.createElement("span"); tm.className="time"; tm.textContent=`${s.start}–${s.end}`;
+      const who=document.createElement("span"); who.className="who"; who.textContent=s.player;
+      const right=document.createElement("span"); right.className="right";
+      const chip=document.createElement("span"); chip.className="chip"+(s.lights?" lit":""); chip.textContent=s.lights?"Có đèn":"Không đèn";
+      const h=document.createElement("span"); h.className="hrs"; h.textContent=hrs(dur(s))+"h";
+      right.append(chip,h);
+      const del=document.createElement("button"); del.className="del"; del.type="button";
+      del.setAttribute("aria-label","Xóa ca này"); del.textContent="×";
+      del.onclick = () => {
+        if(del.classList.contains("armed")){ removeSession(s.id); return; }
+        del.classList.add("armed"); del.textContent="Xóa?";
+        setTimeout(()=>{ if(del.isConnected){ del.classList.remove("armed"); del.textContent="×"; } },3000);
+      };
+      li.append(tm,who,right,del); ul.appendChild(li);
+    });
+  }
+
+  function renderMonth(){
+    const [y,m] = viewMonth.split("-");
+    $("monthLabel").textContent = `Tháng ${Number(m)}/${y}`;
+    const byDay = {}; let d=0,l=0;
+    monthSessions.forEach(s=>{ const x=dur(s); byDay[s.date] ??= {d:0,l:0};
+      if(s.lights){ l+=x; byDay[s.date].l+=x; } else { d+=x; byDay[s.date].d+=x; } });
+    $("mDayH").textContent=hrs(d); $("mLitH").textContent=hrs(l); $("mAllH").textContent=hrs(d+l);
+    $("mDayR").textContent=vnd(rates.day); $("mLitR").textContent=vnd(rates.lit);
+    $("mDayT").textContent=vnd(d*rates.day); $("mLitT").textContent=vnd(l*rates.lit);
+    $("mAllT").textContent=vnd(d*rates.day+l*rates.lit);
+    const tb=$("dayRows"); tb.textContent="";
+    const days=Object.keys(byDay).sort();
+    if(!days.length){ const tr=document.createElement("tr"); const td=document.createElement("td");
+      td.colSpan=3; td.style.color="var(--muted)"; td.textContent="Chưa có ca nào trong tháng này."; tr.appendChild(td); tb.appendChild(tr); }
+    days.forEach(k=>{ const tr=document.createElement("tr"); const p=k.split("-");
+      [`${Number(p[2])}/${Number(p[1])}`, hrs(byDay[k].d), hrs(byDay[k].l)].forEach(v=>{
+        const td=document.createElement("td"); td.textContent=v; tr.appendChild(td); });
+      tb.appendChild(tr); });
+  }
+
+  // Month nav
+  function shiftMonth(delta){
+    const [y,m]=viewMonth.split("-").map(Number); const d=new Date(y,m-1+delta,1);
+    viewMonth=`${d.getFullYear()}-${pad(d.getMonth()+1)}`; monthSessions=[]; renderMonth(); loadMonth();
+  }
+  $("prevM").onclick=()=>shiftMonth(-1); $("nextM").onclick=()=>shiftMonth(1);
+
+  // Log a session
+  $("logForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const msg=$("formMsg"); msg.className="msg"; msg.textContent="";
+    const err = t => { msg.className="msg err"; msg.textContent=t; };
+    const s = { player:$("player").value.trim(), date:$("date").value, start:$("start").value, end:$("end").value,
+                lights:$("lit-on").checked };
+    if(!s.player) return err("Nhập tên người chơi.");
+    if(!s.date) return err("Chọn ngày.");
+    if(!s.start || !s.end) return err("Nhập giờ bắt đầu và kết thúc.");
+    if(toMin(s.end)<=toMin(s.start)) return err("Giờ kết thúc phải sau giờ bắt đầu.");
+    try { localStorage.setItem("tennis-player", s.player); } catch(e){}
+    $("submitBtn").disabled=true;
+    const { error } = await sb.from("tennis_sessions").insert({ player:s.player, date:s.date, start_time:s.start, end_time:s.end, lights:s.lights });
+    $("submitBtn").disabled=false;
+    if(error) return err("Chưa lưu được. Kiểm tra mạng rồi thử lại.");
+    msg.textContent = `Đã ghi ${s.start}–${s.end} (${s.lights?"có đèn":"không đèn"})` + (s.date!==today?` cho ngày ${s.date.split("-").reverse().join("/")}.`:".");
+    $("start").value=""; $("end").value=""; $("date").value=today;
+    reloadAll();
+  });
+
+  async function removeSession(id){
+    const { error } = await sb.from("tennis_sessions").delete().eq("id", id);
+    if(error){ $("formMsg").className="msg err"; $("formMsg").textContent="Không xóa được ca này."; return; }
+    reloadAll();
+  }
+
+  // Prices
+  $("rateForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const r={ day_rate:Math.max(0,Math.round(Number($("rateDay").value)||0)), lit_rate:Math.max(0,Math.round(Number($("rateLit").value)||0)) };
+    const msg=$("rateMsg"); msg.className="msg";
+    $("rateBtn").disabled=true;
+    const { error } = await sb.from("tennis_settings").update(r).eq("id",1);
+    $("rateBtn").disabled=false;
+    if(error){ msg.className="msg err"; msg.textContent="Chưa lưu được giá."; return; }
+    rates={day:r.day_rate, lit:r.lit_rate}; renderMonth(); msg.textContent="Đã lưu giá.";
+  });
+
+  // Live updates from other phones
+  sb.channel("tennis")
+    .on("postgres_changes", { event:"*", schema:"public", table:"tennis_sessions" }, reloadAll)
+    .on("postgres_changes", { event:"*", schema:"public", table:"tennis_settings" }, loadRates)
+    .subscribe();
+
+  // If the page stays open past midnight, roll over to the new day
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.visibilityState!=="visible") return;
+    const now = ymd(new Date());
+    if(now!==today){ today=now; setHeader(); $("date").value=today; }
+    reloadAll(); loadRates();
+  });
+
+  reloadAll(); loadRates();
+})();
+</script>
+</body>
+</html>
