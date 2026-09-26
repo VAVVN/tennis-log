@@ -67,12 +67,21 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--court);outline-
 .msg.err{color:var(--danger)}
 
 ul.list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
-ul.list li{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:11px 12px;border-top:1px solid var(--rule)}
+ul.list li{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;padding:10px 8px 10px 12px;border-top:1px solid var(--rule)}
 ul.list li:first-child{border-top:0}
+ul.list li.editing{background:var(--bg);box-shadow:inset 3px 0 0 var(--court)}
 ul.list li.empty{display:block;color:var(--muted);font-size:14px;padding:16px 12px}
+.left{display:grid;min-width:0}
 .time{font-variant-numeric:tabular-nums;font-weight:600}
 .who{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .right{display:flex;gap:8px;align-items:center}
+.actions{display:flex;align-items:center}
+.edit{border:0;background:none;color:var(--court);cursor:pointer;font:600 13px var(--body);padding:6px 6px}
+.hint{font-size:12px;color:var(--muted);margin:-4px 0 0}
+.form-actions{display:grid;grid-template-columns:1fr;gap:8px}
+.form-actions.editing{grid-template-columns:2fr 1fr}
+.form-title{font-family:var(--display);font-size:18px;font-weight:700;margin:0;color:var(--court)}
+input.bad{border-color:var(--danger)}
 .chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
 .chip.lit{background:var(--lamp);border-color:var(--lamp);color:#1d1400}
 .hrs{font-variant-numeric:tabular-nums;font-weight:600;min-width:3.2em;text-align:right}
@@ -115,6 +124,7 @@ tfoot td{font-weight:700;font-size:16px}
 
   <section id="view-today">
     <form id="logForm" novalidate>
+      <p class="form-title" id="formTitle" hidden>Sửa ca đã ghi</p>
       <div class="row">
         <label for="player">Người chơi
           <input id="player" autocomplete="off" placeholder="Tên của bạn" maxlength="40">
@@ -124,14 +134,18 @@ tfoot td{font-weight:700;font-size:16px}
         </label>
       </div>
       <div class="row">
-        <label for="start">Bắt đầu<input id="start" type="time" step="300"></label>
-        <label for="end">Kết thúc<input id="end" type="time" step="300"></label>
+        <label for="start">Bắt đầu<input id="start" type="text" inputmode="numeric" autocomplete="off" placeholder="16:30" maxlength="5"></label>
+        <label for="end">Kết thúc<input id="end" type="text" inputmode="numeric" autocomplete="off" placeholder="18:00" maxlength="5"></label>
       </div>
+      <p class="hint">Gõ giờ kiểu 24h, ví dụ 1630 hoặc 18.</p>
       <div class="light-toggle" role="radiogroup" aria-label="Đèn">
         <input type="radio" name="lights" id="lit-off" value="off" checked><label for="lit-off">Không đèn</label>
         <input type="radio" name="lights" id="lit-on" value="on"><label for="lit-on">Có đèn</label>
       </div>
-      <button class="primary" id="submitBtn" type="submit">Ghi giờ</button>
+      <div class="form-actions" id="formActions">
+        <button class="primary" id="submitBtn" type="submit">Ghi giờ</button>
+        <button class="ghost" id="cancelEdit" type="button" hidden>Hủy</button>
+      </div>
       <p class="msg" id="formMsg" aria-live="polite"></p>
     </form>
 
@@ -262,12 +276,19 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       li.textContent="Chưa có ca nào hôm nay. Ghi ca đầu tiên ở trên."; ul.appendChild(li); return; }
     todaySessions.forEach(s=>{
       const li=document.createElement("li");
+      if(s.id===editingId) li.className="editing";
+      const left=document.createElement("span"); left.className="left";
       const tm=document.createElement("span"); tm.className="time"; tm.textContent=`${s.start}–${s.end}`;
       const who=document.createElement("span"); who.className="who"; who.textContent=s.player;
+      left.append(tm,who);
       const right=document.createElement("span"); right.className="right";
       const chip=document.createElement("span"); chip.className="chip"+(s.lights?" lit":""); chip.textContent=s.lights?"Có đèn":"Không đèn";
       const h=document.createElement("span"); h.className="hrs"; h.textContent=hrs(dur(s))+"h";
       right.append(chip,h);
+      const actions=document.createElement("span"); actions.className="actions";
+      const edit=document.createElement("button"); edit.className="edit"; edit.type="button";
+      edit.setAttribute("aria-label",`Sửa ca ${s.start}–${s.end}`); edit.textContent="Sửa";
+      edit.onclick = () => startEdit(s);
       const del=document.createElement("button"); del.className="del"; del.type="button";
       del.setAttribute("aria-label","Xóa ca này"); del.textContent="×";
       del.onclick = () => {
@@ -275,7 +296,8 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         del.classList.add("armed"); del.textContent="Xóa?";
         setTimeout(()=>{ if(del.isConnected){ del.classList.remove("armed"); del.textContent="×"; } },3000);
       };
-      li.append(tm,who,right,del); ul.appendChild(li);
+      actions.append(edit,del);
+      li.append(left,right,actions); ul.appendChild(li);
     });
   }
 
@@ -306,30 +328,95 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   }
   $("prevM").onclick=()=>shiftMonth(-1); $("nextM").onclick=()=>shiftMonth(1);
 
-  // Log a session
+  // Typed time: "1630" -> 16:30, "930" -> 09:30, "18" -> 18:00
+  function parseTime(v){
+    const d = String(v).replace(/\D/g,"");
+    if(!d) return null;
+    let h, m;
+    if(d.length<=2){ h=+d; m=0; }
+    else if(d.length===3){ h=+d.slice(0,1); m=+d.slice(1); }
+    else { h=+d.slice(0,2); m=+d.slice(2,4); }
+    if(h>23 || m>59) return null;
+    return `${pad(h)}:${pad(m)}`;
+  }
+  ["start","end"].forEach(id=>{
+    const el=$(id);
+    el.addEventListener("input", e=>{
+      if(e.inputType && e.inputType.startsWith("delete")) return;
+      const d=el.value.replace(/\D/g,"").slice(0,4);
+      el.value = d.length>2 ? d.slice(0,2)+":"+d.slice(2) : d;
+      el.classList.remove("bad");
+    });
+    el.addEventListener("blur", ()=>{
+      if(!el.value.trim()){ el.classList.remove("bad"); return; }
+      const t=parseTime(el.value);
+      if(t){ el.value=t; el.classList.remove("bad"); } else el.classList.add("bad");
+    });
+  });
+
+  // Edit mode
+  let editingId = null;
+  function startEdit(s){
+    editingId = s.id;
+    $("player").value = s.player; $("date").value = s.date;
+    $("start").value = s.start; $("end").value = s.end;
+    $(s.lights?"lit-on":"lit-off").checked = true;
+    $("formTitle").hidden = false; $("cancelEdit").hidden = false;
+    $("formActions").classList.add("editing");
+    $("submitBtn").textContent = "Lưu thay đổi";
+    $("formMsg").className="msg"; $("formMsg").textContent="";
+    renderToday();
+    $("logForm").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"});
+    $("start").focus({preventScroll:true});
+  }
+  function stopEdit(){
+    editingId = null;
+    $("formTitle").hidden = true; $("cancelEdit").hidden = true;
+    $("formActions").classList.remove("editing");
+    $("submitBtn").textContent = "Ghi giờ";
+    $("start").value=""; $("end").value=""; $("date").value=today;
+    $("start").classList.remove("bad"); $("end").classList.remove("bad");
+    try { const n = localStorage.getItem("tennis-player"); if(n) $("player").value = n; } catch(e){}
+    renderToday();
+  }
+  $("cancelEdit").onclick = () => { stopEdit(); $("formMsg").textContent=""; };
+
+  // Log or update a session
   $("logForm").addEventListener("submit", async e=>{
     e.preventDefault();
     const msg=$("formMsg"); msg.className="msg"; msg.textContent="";
     const err = t => { msg.className="msg err"; msg.textContent=t; };
-    const s = { player:$("player").value.trim(), date:$("date").value, start:$("start").value, end:$("end").value,
-                lights:$("lit-on").checked };
+    const start=parseTime($("start").value), end=parseTime($("end").value);
+    const s = { player:$("player").value.trim(), date:$("date").value, start, end, lights:$("lit-on").checked };
     if(!s.player) return err("Nhập tên người chơi.");
     if(!s.date) return err("Chọn ngày.");
-    if(!s.start || !s.end) return err("Nhập giờ bắt đầu và kết thúc.");
-    if(toMin(s.end)<=toMin(s.start)) return err("Giờ kết thúc phải sau giờ bắt đầu.");
-    try { localStorage.setItem("tennis-player", s.player); } catch(e){}
+    if(!$("start").value.trim() || !$("end").value.trim()) return err("Nhập giờ bắt đầu và kết thúc.");
+    if(!start){ $("start").classList.add("bad"); return err("Giờ bắt đầu chưa đúng. Ví dụ: 1630 hoặc 16:30."); }
+    if(!end){ $("end").classList.add("bad"); return err("Giờ kết thúc chưa đúng. Ví dụ: 1800 hoặc 18:00."); }
+    $("start").value=start; $("end").value=end;
+    if(toMin(end)<=toMin(start)) return err("Giờ kết thúc phải sau giờ bắt đầu.");
+    const row = { player:s.player, date:s.date, start_time:start, end_time:end, lights:s.lights };
     $("submitBtn").disabled=true;
-    const { error } = await sb.from("tennis_sessions").insert({ player:s.player, date:s.date, start_time:s.start, end_time:s.end, lights:s.lights });
+    let error;
+    if(editingId){
+      ({ error } = await sb.from("tennis_sessions").update(row).eq("id", editingId));
+    } else {
+      try { localStorage.setItem("tennis-player", s.player); } catch(e){}
+      ({ error } = await sb.from("tennis_sessions").insert(row));
+    }
     $("submitBtn").disabled=false;
-    if(error) return err("Chưa lưu được. Kiểm tra mạng rồi thử lại.");
-    msg.textContent = `Đã ghi ${s.start}–${s.end} (${s.lights?"có đèn":"không đèn"})` + (s.date!==today?` cho ngày ${s.date.split("-").reverse().join("/")}.`:".");
-    $("start").value=""; $("end").value=""; $("date").value=today;
+    if(error) return err(editingId ? "Chưa sửa được. Kiểm tra mạng rồi thử lại." : "Chưa lưu được. Kiểm tra mạng rồi thử lại.");
+    const other = s.date!==today ? ` cho ngày ${s.date.split("-").reverse().join("/")}` : "";
+    const done = `${editingId ? "Đã sửa thành" : "Đã ghi"} ${start}–${end} (${s.lights?"có đèn":"không đèn"})${other}.`;
+    if(editingId) stopEdit(); else { $("start").value=""; $("end").value=""; $("date").value=today; }
+    msg.textContent = done;
     reloadAll();
   });
 
   async function removeSession(id){
     const { error } = await sb.from("tennis_sessions").delete().eq("id", id);
     if(error){ $("formMsg").className="msg err"; $("formMsg").textContent="Không xóa được ca này."; return; }
+    if(id===editingId) stopEdit();
     reloadAll();
   }
 
